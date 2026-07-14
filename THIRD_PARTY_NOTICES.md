@@ -2,7 +2,7 @@
 
 ## flashrom chip definitions
 
-`FlashromSpiNorCatalog.tsv` is generated from flashrom chip definition files:
+Flashrom-derived rows in `IntegratedIcCatalog.tsv` are generated from flashrom chip definition files:
 
 - `flashchips/winbond.c`
 - `flashchips/macronix.c`
@@ -16,3 +16,11 @@ text are kept under `flashrom-data/`.
 
 The application source code is MIT licensed. flashrom-derived data remains under
 the flashrom license.
+
+## EEFlasher IC catalog
+
+Rows imported from Raoufbaa's EEFlasher project.
+
+Source: <https://github.com/Raoufbaa/EEflasher-Release>
+
+EEFlasher is licensed under the MIT License.

@@ -698,19 +698,14 @@ public partial class MainWindow : Window
         AddCandidate(list, "24C512", "5V/3.3V", "512 Kbits", "128 Bytes", "GENERIC", "I2C_EEPROM", "", 65536, "I2C", 128, "24xx");
         AddCandidate(list, "93C46", "5V/3.3V", "1 Kbits", "16 Bytes", "GENERIC", "MICROWIRE (CATALOG_ONLY)", "", 128, "Microwire", 16, "93xx");
         AddCandidate(list, "93C86", "5V/3.3V", "16 Kbits", "16 Bytes", "GENERIC", "MICROWIRE (CATALOG_ONLY)", "", 2048, "Microwire", 16, "93xx");
-        AddFlashromSpiNorCatalog(list);
+        AddIntegratedIcCatalog(list);
         return list;
     }
 
-    private static void AddFlashromSpiNorCatalog(List<IcCandidate> list)
+    private static void AddIntegratedIcCatalog(List<IcCandidate> list)
     {
-        var catalogPath = Path.Combine(AppContext.BaseDirectory, "FlashromSpiNorCatalog.tsv");
-        if (!File.Exists(catalogPath))
-        {
-            catalogPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "FlashromSpiNorCatalog.tsv");
-        }
-
-        if (!File.Exists(catalogPath))
+        var catalogPath = FindCatalogFile("IntegratedIcCatalog.tsv");
+        if (catalogPath is null)
         {
             return;
         }
@@ -718,15 +713,17 @@ public partial class MainWindow : Window
         var knownDevices = list.Select(x => x.Device).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var line in File.ReadLines(catalogPath))
         {
-            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#'))
+            if (string.IsNullOrWhiteSpace(line) || line.StartsWith('#') || line.StartsWith("Device\t"))
             {
                 continue;
             }
 
             var fields = line.Split('\t');
-            if (fields.Length < 7 ||
+            if (fields.Length < 10 ||
                 !int.TryParse(fields[3], out var sizeBytes) ||
                 !int.TryParse(fields[4], out var pageSize) ||
+                sizeBytes <= 0 ||
+                pageSize <= 0 ||
                 !knownDevices.Add(fields[0]))
             {
                 continue;
@@ -735,17 +732,29 @@ public partial class MainWindow : Window
             AddCandidate(
                 list,
                 fields[0],
-                string.IsNullOrWhiteSpace(fields[5]) ? "SPI" : fields[5],
+                FormatVolts(fields[5]),
                 FormatMbits(sizeBytes),
                 $"{pageSize} Bytes",
-                fields[1].ToUpperInvariant(),
-                fields[6],
-                fields[2],
+                string.IsNullOrWhiteSpace(fields[1]) ? "GENERIC" : fields[1].ToUpperInvariant(),
+                fields[8],
+                FormatRawId(fields[2]),
                 sizeBytes,
-                "SPI",
+                fields[6],
                 pageSize,
-                "25xx");
+                fields[7]);
         }
+    }
+
+    private static string? FindCatalogFile(string fileName)
+    {
+        var catalogPath = Path.Combine(AppContext.BaseDirectory, fileName);
+        if (File.Exists(catalogPath))
+        {
+            return catalogPath;
+        }
+
+        catalogPath = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", fileName);
+        return File.Exists(catalogPath) ? catalogPath : null;
     }
 
     private static void AddWinbondFamily(List<IcCandidate> list, string id, string baseName, int bytes, string bitSize)
@@ -765,6 +774,20 @@ public partial class MainWindow : Window
         var profile = new ChipProfile(device, protocol, bytes, pageSize, commandSet, manuf, volts, type);
         list.Add(new IcCandidate(device, volts, size, page, manuf, type, profile, jedecId));
     }
+
+    private static string FormatRawId(string? id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return string.Empty;
+        }
+
+        var hex = new string(id.Where(Uri.IsHexDigit).ToArray()).ToUpperInvariant();
+        return string.Join(" ", Enumerable.Range(0, hex.Length / 2).Select(i => hex.Substring(i * 2, 2)));
+    }
+
+    private static string FormatVolts(string? volts) =>
+        string.IsNullOrWhiteSpace(volts) ? string.Empty : volts.EndsWith('V') ? volts : $"{volts}V";
 
     private static string FormatId(byte[] id) => string.Join(" ", id.Select(x => x.ToString("X2")));
 

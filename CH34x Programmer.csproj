@@ -19,7 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="FlashromSpiNorCatalog.tsv" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="IntegratedIcCatalog.tsv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

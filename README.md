@@ -9,7 +9,7 @@ buffers, erase chips, and run simple scripts such as `Read + Verify` and
 
 - CH341 and CH347 programmer detection.
 - SPI NOR catalog search with JEDEC ID matching.
-- Flashrom-derived Winbond, Macronix, and GigaDevice SPI NOR catalog data.
+- Integrated IC catalog with supported SPI 25xx, I2C 24xx, and flashrom-derived SPI NOR entries.
 - Hex buffer preview/editor.
 - Read, write, verify, erase, and script workflows.
 - Light/dark mode.
@@ -44,6 +44,6 @@ installed system-wide.
 
 Application source code is licensed under the MIT License. See `LICENSE`.
 
-The SPI NOR catalog is generated from flashrom chip definitions and remains
+Parts of the integrated IC catalog are generated from flashrom chip definitions and remain
 subject to the flashrom GPL-2.0-or-later license. See `THIRD_PARTY_NOTICES.md`
 and `flashrom-data/COPYING.rst`.

@@ -125,7 +125,7 @@ public partial class MainWindow : Window
         UpdateDeviceInfo(chip);
         if (!_isApplyingDetectedChip)
         {
-            AppendLog($"Selected {chip.Name}: {chip.Protocol}, {FormatBytes(chip.SizeBytes)}, page {chip.PageSize}.");
+            AppendLog($"Selected {chip.Name}: {chip.Protocol}, {FormatBytes(chip.SizeBytes)}, page {chip.PageSize}");
         }
     }
 
@@ -134,7 +134,7 @@ public partial class MainWindow : Window
         if (SizeCombo.SelectedItem is SizeOption size && _buffer.Length != size.Bytes)
         {
             ResizeBuffer(size.Bytes, fill: 0xFF);
-            AppendLog($"Buffer resized to {FormatBytes(size.Bytes)}.");
+            AppendLog($"Buffer resized to {FormatBytes(size.Bytes)}");
         }
     }
 
@@ -267,11 +267,11 @@ public partial class MainWindow : Window
             var changed = _activeProgrammerKey != "ch347";
             _programmer = new Ch347NativeProgrammer();
             _activeProgrammerKey = "ch347";
-            HardwareStatusText.Text = "CH347 detected";
+            HardwareStatusText.Text = "CH347 connected";
             UpdateProgrammerControls();
             if (forceLog || changed && logWhenChanged)
             {
-                AppendLog($"{(changed ? "CH347 connected" : "CH347 detected")}. Active backend: CH347 native DLL.");
+                AppendLog("CH347 connected. Active backend: CH347 native DLL");
             }
             return;
         }
@@ -281,11 +281,11 @@ public partial class MainWindow : Window
             var changed = _activeProgrammerKey != "ch341";
             _programmer = new ChNativeProgrammer();
             _activeProgrammerKey = "ch341";
-            HardwareStatusText.Text = "CH341 detected";
+            HardwareStatusText.Text = "CH341 connected";
             UpdateProgrammerControls();
             if (forceLog || changed && logWhenChanged)
             {
-                AppendLog($"{(changed ? "CH341 connected" : "CH341 detected")}. Active backend: CH341 native DLL.");
+                AppendLog("CH341 connected. Active backend: CH341 native DLL");
             }
             return;
         }
@@ -293,11 +293,11 @@ public partial class MainWindow : Window
         var wasConnected = _activeProgrammerKey != "none";
         _programmer = new MockCh34xProgrammer();
         _activeProgrammerKey = "none";
-        HardwareStatusText.Text = "No device found";
+        HardwareStatusText.Text = "Programmer disconnected";
         UpdateProgrammerControls();
         if (forceLog || wasConnected && logWhenChanged)
         {
-            AppendLog(wasConnected ? "Programmer disconnected." : "No device found.");
+            AppendLog("Programmer disconnected");
         }
     }
 
@@ -341,7 +341,7 @@ public partial class MainWindow : Window
             return true;
         }
 
-        AppendLog($"{operationName} skipped: no programmer found.");
+        AppendLog($"{operationName} skipped: no programmer found");
         MessageBox.Show(this, "No CH341/CH347 programmer found.", operationName, MessageBoxButton.OK, MessageBoxImage.Information);
         return false;
     }
@@ -361,7 +361,7 @@ public partial class MainWindow : Window
         await RunOperationAsync("Read chip", _buffer.Length, async progress =>
         {
             var startAddress = ParseStartAddress();
-            AppendLog($"Read request: {FormatBytes(_buffer.Length)} from 0x{startAddress:X6}.");
+            AppendLog($"Read request: {FormatBytes(_buffer.Length)} from 0x{startAddress:X6}");
             _buffer = await _programmer.ReadAsync(CurrentChip(), startAddress, _buffer.Length, progress);
             RebuildRows();
             UpdateStatus();
@@ -379,7 +379,7 @@ public partial class MainWindow : Window
         {
             var startAddress = ParseStartAddress();
             var skipBlankPages = SkipBlankPagesCheckBox.IsChecked == true;
-            AppendLog($"Write request: {FormatBytes(_buffer.Length)} to 0x{startAddress:X6}{(skipBlankPages ? " (skip FF pages)" : "")}.");
+            AppendLog($"Write request: {FormatBytes(_buffer.Length)} to 0x{startAddress:X6}{(skipBlankPages ? " (skip FF pages)" : "")}");
             await _programmer.WriteAsync(CurrentChip(), startAddress, _buffer, progress, skipBlankPages);
         });
     }
@@ -394,9 +394,9 @@ public partial class MainWindow : Window
         await RunOperationAsync("Verify", _buffer.Length, async progress =>
         {
             var startAddress = ParseStartAddress();
-            AppendLog($"Verify request: {FormatBytes(_buffer.Length)} at 0x{startAddress:X6}.");
+            AppendLog($"Verify request: {FormatBytes(_buffer.Length)} at 0x{startAddress:X6}");
             var ok = await _programmer.VerifyAsync(CurrentChip(), startAddress, _buffer, progress);
-            AppendLog(ok ? "Verify OK." : "Verify failed.");
+            AppendLog(ok ? "Verify OK" : "Verify failed");
         });
     }
 
@@ -420,7 +420,7 @@ public partial class MainWindow : Window
 
     private void Stop_Click(object sender, RoutedEventArgs e)
     {
-        AppendLog("Stop requested. Current operation will finish its current block.");
+        AppendLog("Stop requested. Current operation will finish its current block");
     }
 
     private async void HexSearchPrevious_Click(object sender, RoutedEventArgs e) => await RunSearchAsync(forward: false);
@@ -484,7 +484,7 @@ public partial class MainWindow : Window
     {
         if (_isSearching)
         {
-            AppendLog("Search is already running.");
+            AppendLog("Search is already running");
             return;
         }
 
@@ -530,7 +530,7 @@ public partial class MainWindow : Window
             var offset = result.Offset;
             if ((uint)offset >= _buffer.Length)
             {
-                AppendLog($"Offset 0x{offset:X6} is outside buffer range 0x000000-0x{Math.Max(0, _buffer.Length - 1):X6}.");
+                AppendLog($"Offset 0x{offset:X6} is outside buffer range 0x000000-0x{Math.Max(0, _buffer.Length - 1):X6}");
                 return;
             }
 
@@ -616,7 +616,7 @@ public partial class MainWindow : Window
     {
         _currentOffset = offset;
         HexEditor.ScrollToOffset(offset);
-        AppendLog($"Found at 0x{offset:X6}.");
+        AppendLog($"Found at 0x{offset:X6}");
     }
 
     private void ViewOffset(int offset)
@@ -625,7 +625,7 @@ public partial class MainWindow : Window
         RebuildRows(offset);
         UpdateStatus();
         HexEditor.ScrollToOffset(offset);
-        AppendLog($"Viewing 0x{_previewStartOffset:X6}.");
+        AppendLog($"Viewing 0x{_previewStartOffset:X6}");
     }
 
     private static int AlignOffset(int offset) => offset / BytesPerHexRow * BytesPerHexRow;
@@ -840,7 +840,7 @@ public partial class MainWindow : Window
         _buffer = File.ReadAllBytes(dialog.FileName);
         RebuildRows();
         UpdateStatus();
-        AppendLog($"Loaded {dialog.FileName} ({FormatBytes(_buffer.Length)}).");
+        AppendLog($"Loaded {dialog.FileName} ({FormatBytes(_buffer.Length)})");
     }
 
     private void SaveFile_Click(object sender, RoutedEventArgs e)
@@ -856,21 +856,21 @@ public partial class MainWindow : Window
         }
 
         File.WriteAllBytes(dialog.FileName, _buffer);
-        AppendLog($"Saved {dialog.FileName} ({FormatBytes(_buffer.Length)}).");
+        AppendLog($"Saved {dialog.FileName} ({FormatBytes(_buffer.Length)})");
     }
 
     private void FillFF_Click(object sender, RoutedEventArgs e)
     {
         Array.Fill(_buffer, (byte)0xFF);
         RebuildRows();
-        AppendLog("Buffer filled with FF.");
+        AppendLog("Buffer filled with FF");
     }
 
     private void Fill00_Click(object sender, RoutedEventArgs e)
     {
         Array.Fill(_buffer, (byte)0x00);
         RebuildRows();
-        AppendLog("Buffer filled with 00.");
+        AppendLog("Buffer filled with 00");
     }
 
     private async void RunScript_Click(object sender, RoutedEventArgs e)
@@ -887,20 +887,20 @@ public partial class MainWindow : Window
             var startAddress = ParseStartAddress();
             if (string.Equals(script, "Read + verify", StringComparison.OrdinalIgnoreCase))
             {
-                AppendLog($"Script request: read and verify {FormatBytes(_buffer.Length)} from 0x{startAddress:X6}.");
+                AppendLog($"Script request: read and verify {FormatBytes(_buffer.Length)} from 0x{startAddress:X6}");
                 _buffer = await _programmer.ReadAsync(chip, startAddress, _buffer.Length, progress);
                 RebuildRows();
                 UpdateStatus();
                 var readOk = await _programmer.VerifyAsync(chip, startAddress, _buffer, progress);
-                AppendLog(readOk ? "Script completed: read + verify OK." : "Script completed: read + verify failed.");
+                AppendLog(readOk ? "Script completed: read + verify OK" : "Script completed: read + verify failed");
                 return;
             }
 
-            AppendLog($"Script request: erase, write and verify {FormatBytes(_buffer.Length)} at 0x{startAddress:X6}.");
+            AppendLog($"Script request: erase, write and verify {FormatBytes(_buffer.Length)} at 0x{startAddress:X6}");
             await _programmer.EraseAsync(chip, progress);
             await _programmer.WriteAsync(chip, startAddress, _buffer, progress, skipBlankPages: true);
             var ok = await _programmer.VerifyAsync(chip, startAddress, _buffer, progress);
-            AppendLog(ok ? "Script completed: verify OK." : "Script completed: verify failed.");
+            AppendLog(ok ? "Script completed: verify OK" : "Script completed: verify failed");
         });
     }
 
@@ -931,7 +931,7 @@ public partial class MainWindow : Window
     {
         if (_isBusy)
         {
-            AppendLog("Another operation is already running.");
+            AppendLog("Another operation is already running");
             return;
         }
 
@@ -942,7 +942,7 @@ public partial class MainWindow : Window
         var stopwatch = Stopwatch.StartNew();
         if (logLifecycle)
         {
-            AppendLog($"{name} started.");
+            AppendLog($"{name} started");
         }
 
         try
@@ -954,8 +954,8 @@ public partial class MainWindow : Window
             if (logLifecycle)
             {
                 AppendLog(byteCount is > 0
-                    ? $"{name} completed: {FormatBytes(byteCount.Value)} in {FormatDuration(stopwatch.Elapsed)} ({FormatSpeed(byteCount.Value, stopwatch.Elapsed)})."
-                    : $"{name} completed in {FormatDuration(stopwatch.Elapsed)}.");
+                    ? $"{name} completed: {FormatBytes(byteCount.Value)} in {FormatDuration(stopwatch.Elapsed)} ({FormatSpeed(byteCount.Value, stopwatch.Elapsed)})"
+                    : $"{name} completed in {FormatDuration(stopwatch.Elapsed)}");
             }
         }
         catch (Exception ex)
@@ -977,7 +977,7 @@ public partial class MainWindow : Window
     {
         if (id.Length == 0)
         {
-            AppendLog("IC ID is empty; skipped IC auto-detect.");
+            AppendLog("IC ID is empty; skipped IC auto-detect");
             return;
         }
 
@@ -992,21 +992,21 @@ public partial class MainWindow : Window
         {
             if (!openCatalogOnMiss)
             {
-                AppendLog("IC ID is not in the detection table.");
+                AppendLog("IC ID is not in the detection table");
                 return;
             }
 
-            AppendLog("IC ID is not in the detection table. Opening full IC list.");
+            AppendLog("IC ID is not in the detection table. Opening full IC list");
             ShowChipSelection(_icCatalog, "Search IC", null);
             return;
         }
 
-        AppendLog($"Found {candidates.Count} IC candidate(s) for ID {idText}.");
+        AppendLog($"Found {candidates.Count} IC candidate(s) for ID {idText}");
         if (autoApplySingle && candidates.Count == 1)
         {
             var candidate = candidates[0];
             ApplyChip(candidate.Profile);
-            AppendLog($"Auto-selected IC: {candidate.Device}, {candidate.Size}, page {candidate.Page}, {candidate.Manuf}.");
+            AppendLog($"Auto-selected IC: {candidate.Device}, {candidate.Size}, page {candidate.Page}, {candidate.Manuf}");
             return;
         }
 
@@ -1024,7 +1024,7 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog() == true && dialog.SelectedCandidate is not null)
         {
             ApplyChip(dialog.SelectedCandidate.Profile);
-            AppendLog($"Selected IC: {dialog.SelectedCandidate.Device}, {dialog.SelectedCandidate.Size}, page {dialog.SelectedCandidate.Page}, {dialog.SelectedCandidate.Manuf}.");
+            AppendLog($"Selected IC: {dialog.SelectedCandidate.Device}, {dialog.SelectedCandidate.Size}, page {dialog.SelectedCandidate.Page}, {dialog.SelectedCandidate.Manuf}");
         }
     }
 
@@ -1274,6 +1274,7 @@ public partial class MainWindow : Window
 
     private void AppendLog(string message)
     {
+        message = message.TrimEnd('.');
         LogBox.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
         LogBox.ScrollToEnd();
     }

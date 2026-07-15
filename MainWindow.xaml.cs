@@ -8,6 +8,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
+using System.Windows.Threading;
 using System.Windows.Media;
 
 namespace Ch34xProgrammer;
@@ -49,7 +50,9 @@ public partial class MainWindow : Window
     ];
 
     private readonly List<IcCandidate> _icCatalog = [];
+    private readonly DispatcherTimer _programmerMonitorTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private IChipProgrammer _programmer = new MockCh34xProgrammer();
+    private string _activeProgrammerKey = "none";
     private byte[] _buffer = [];
     private int _previewStartOffset;
     private int _currentOffset;
@@ -81,6 +84,7 @@ public partial class MainWindow : Window
         UpdateDeviceInfo(_chips[0]);
         UpdateProgrammerControls();
 
+        _programmerMonitorTimer.Tick += ProgrammerMonitorTimer_Tick;
         Loaded += MainWindow_Loaded;
     }
 
@@ -197,7 +201,38 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
-        await DetectProgrammerAsync(logLifecycle: false);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await ProbeProgrammerAsync(logWhenChanged: true);
+        if (HasProgrammer)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            await DetectIcAsync(logLifecycle: false, autoApplySingle: true, openCatalogOnMiss: false);
+        }
+
+        _programmerMonitorTimer.Start();
+    }
+
+    private async void ProgrammerMonitorTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _programmerMonitorTimer.Stop();
+        var previousProgrammerKey = _activeProgrammerKey;
+        try
+        {
+            await ProbeProgrammerAsync(logWhenChanged: true);
+            if (previousProgrammerKey == "none" && HasProgrammer)
+            {
+                await DetectIcAsync(logLifecycle: false, autoApplySingle: true, openCatalogOnMiss: false);
+            }
+        }
+        finally
+        {
+            _programmerMonitorTimer.Start();
+        }
     }
 
     private async void Detect_Click(object sender, RoutedEventArgs e)
@@ -214,30 +249,57 @@ public partial class MainWindow : Window
             progress.Report(50);
             var chDetected = ChNativeProgrammer.IsAvailable && ChNativeProgrammer.CanOpenDevice();
             progress.Report(100);
-
-            if (ch347Detected)
-            {
-                _programmer = new Ch347NativeProgrammer();
-                HardwareStatusText.Text = "CH347 detected";
-                UpdateProgrammerControls();
-                AppendLog("CH347 detected. Active backend: CH347 native DLL.");
-                return;
-            }
-
-            if (chDetected)
-            {
-                _programmer = new ChNativeProgrammer();
-                HardwareStatusText.Text = "CH341 detected";
-                UpdateProgrammerControls();
-                AppendLog("CH341 detected. Active backend: CH341 native DLL.");
-                return;
-            }
-
-            _programmer = new MockCh34xProgrammer();
-            HardwareStatusText.Text = "No device found";
-            UpdateProgrammerControls();
-            AppendLog("No device found.");
+            ApplyProgrammerDetection(ch347Detected, chDetected, logWhenChanged: true, forceLog: logLifecycle);
         }, logLifecycle: logLifecycle);
+
+    private async Task ProbeProgrammerAsync(bool logWhenChanged)
+    {
+        await Task.Yield();
+        var ch347Detected = Ch347NativeProgrammer.IsAvailable && Ch347NativeProgrammer.CanOpenDevice();
+        var chDetected = ChNativeProgrammer.IsAvailable && ChNativeProgrammer.CanOpenDevice();
+        ApplyProgrammerDetection(ch347Detected, chDetected, logWhenChanged, forceLog: false);
+    }
+
+    private void ApplyProgrammerDetection(bool ch347Detected, bool chDetected, bool logWhenChanged, bool forceLog)
+    {
+        if (ch347Detected)
+        {
+            var changed = _activeProgrammerKey != "ch347";
+            _programmer = new Ch347NativeProgrammer();
+            _activeProgrammerKey = "ch347";
+            HardwareStatusText.Text = "CH347 detected";
+            UpdateProgrammerControls();
+            if (forceLog || changed && logWhenChanged)
+            {
+                AppendLog($"{(changed ? "CH347 connected" : "CH347 detected")}. Active backend: CH347 native DLL.");
+            }
+            return;
+        }
+
+        if (chDetected)
+        {
+            var changed = _activeProgrammerKey != "ch341";
+            _programmer = new ChNativeProgrammer();
+            _activeProgrammerKey = "ch341";
+            HardwareStatusText.Text = "CH341 detected";
+            UpdateProgrammerControls();
+            if (forceLog || changed && logWhenChanged)
+            {
+                AppendLog($"{(changed ? "CH341 connected" : "CH341 detected")}. Active backend: CH341 native DLL.");
+            }
+            return;
+        }
+
+        var wasConnected = _activeProgrammerKey != "none";
+        _programmer = new MockCh34xProgrammer();
+        _activeProgrammerKey = "none";
+        HardwareStatusText.Text = "No device found";
+        UpdateProgrammerControls();
+        if (forceLog || wasConnected && logWhenChanged)
+        {
+            AppendLog(wasConnected ? "Programmer disconnected." : "No device found.");
+        }
+    }
 
     private async void ReadId_Click(object sender, RoutedEventArgs e)
     {
@@ -246,13 +308,16 @@ public partial class MainWindow : Window
             return;
         }
 
-        await RunOperationAsync("Read ID", async progress =>
+        await DetectIcAsync(logLifecycle: true, autoApplySingle: false, openCatalogOnMiss: true);
+    }
+
+    private Task DetectIcAsync(bool logLifecycle, bool autoApplySingle, bool openCatalogOnMiss) =>
+        RunOperationAsync("Read ID", async progress =>
         {
             var id = await _programmer.ReadIdAsync(CurrentChip(), progress);
             AppendLog($"IC ID: {BitConverter.ToString(id).Replace("-", " ")}");
-            ShowChipSelectionForId(id);
-        });
-    }
+            ShowChipSelectionForId(id, autoApplySingle, openCatalogOnMiss);
+        }, logLifecycle: logLifecycle);
 
     private bool HasProgrammer => _programmer is not MockCh34xProgrammer;
 
@@ -908,8 +973,14 @@ public partial class MainWindow : Window
 
     private ChipProfile CurrentChip() => ChipCombo.SelectedItem as ChipProfile ?? _chips[0];
 
-    private void ShowChipSelectionForId(byte[] id)
+    private void ShowChipSelectionForId(byte[] id, bool autoApplySingle = false, bool openCatalogOnMiss = true)
     {
+        if (id.Length == 0)
+        {
+            AppendLog("IC ID is empty; skipped IC auto-detect.");
+            return;
+        }
+
         var idText = FormatId(id);
         var candidates = FindCandidatesByJedecId(id).ToList();
         if (candidates.Count == 0 && TryDetectJedecChip(id, out var fallback))
@@ -919,12 +990,26 @@ public partial class MainWindow : Window
 
         if (candidates.Count == 0)
         {
+            if (!openCatalogOnMiss)
+            {
+                AppendLog("IC ID is not in the detection table.");
+                return;
+            }
+
             AppendLog("IC ID is not in the detection table. Opening full IC list.");
             ShowChipSelection(_icCatalog, "Search IC", null);
             return;
         }
 
         AppendLog($"Found {candidates.Count} IC candidate(s) for ID {idText}.");
+        if (autoApplySingle && candidates.Count == 1)
+        {
+            var candidate = candidates[0];
+            ApplyChip(candidate.Profile);
+            AppendLog($"Auto-selected IC: {candidate.Device}, {candidate.Size}, page {candidate.Page}, {candidate.Manuf}.");
+            return;
+        }
+
         ShowChipSelection(candidates, "Search IC", idText);
     }
 

@@ -477,7 +477,7 @@
 
             <Grid Grid.Row="2" Grid.Column="1">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="28"/>
+                    <RowDefinition Height="30"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
@@ -489,10 +489,23 @@
                     <StatusBarItem>
                         <ProgressBar x:Name="OperationProgress" Width="210" Height="14" Minimum="0" Maximum="100" Background="{DynamicResource ProgressTrackBrush}"/>
                     </StatusBarItem>
-                <StatusBarItem>
-                    <TextBlock x:Name="OperationStatusText" Text="Ready"/>
-                </StatusBarItem>
-            </StatusBar>
+                    <StatusBarItem>
+                        <TextBlock x:Name="OperationStatusText" Text="Ready"/>
+                    </StatusBarItem>
+                    <Separator/>
+                    <StatusBarItem>
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="SaveLogButton"
+                                    Height="20"
+                                    Padding="8,0"
+                                    Click="SaveLog_Click">Save log</Button>
+                            <Button x:Name="ClearLogButton"
+                                    Height="20"
+                                    Padding="8,0"
+                                    Click="ClearLog_Click">Clear log</Button>
+                        </StackPanel>
+                    </StatusBarItem>
+                </StatusBar>
 
                 <TextBox x:Name="LogBox" Grid.Row="1"
                          Height="Auto"

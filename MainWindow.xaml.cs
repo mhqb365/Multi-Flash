@@ -927,6 +927,33 @@ public partial class MainWindow : Window
         AppendLog($"Saved {dialog.FileName} ({FormatBytes(_buffer.Length)})");
     }
 
+    private void SaveLog_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(LogBox.Text))
+        {
+            MessageBox.Show(this, "Log is empty", AppName, MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Filter = "Log files (*.log)|*.log|Text files (*.txt)|*.txt|All files (*.*)|*.*",
+            FileName = $"CH34x-Programmer-Log-{DateTime.Now:yyyyMMdd-HHmmss}.log"
+        };
+        if (dialog.ShowDialog(this) != true)
+        {
+            return;
+        }
+
+        File.WriteAllText(dialog.FileName, LogBox.Text, Encoding.UTF8);
+        AppendLog($"Log saved: {dialog.FileName}");
+    }
+
+    private void ClearLog_Click(object sender, RoutedEventArgs e)
+    {
+        LogBox.Clear();
+    }
+
     private void FillFF_Click(object sender, RoutedEventArgs e)
     {
         Array.Fill(_buffer, (byte)0xFF);

@@ -479,6 +479,14 @@
                                     Padding="0"
                                     ToolTip="Find previous"
                                     Click="HexSearchPrevious_Click">‹</Button>
+                            <Button x:Name="HexReplaceButton"
+                                    DockPanel.Dock="Right"
+                                    Width="64"
+                                    Height="20"
+                                    Margin="2,4,2,4"
+                                    Padding="0"
+                                    ToolTip="Open replace dialog"
+                                    Click="HexReplace_Click">Replace</Button>
                             <Button x:Name="HexSearchAllButton"
                                     DockPanel.Dock="Right"
                                     Width="34"

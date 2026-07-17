@@ -108,6 +108,33 @@ public sealed class HexEditorView : FrameworkElement
         InvalidateVisual();
     }
 
+    public bool ReplaceBytes(int offset, byte[] bytes)
+    {
+        if (bytes.Length == 0 || (uint)offset >= _buffer.Length)
+        {
+            return false;
+        }
+
+        var count = Math.Min(bytes.Length, _buffer.Length - offset);
+        var edits = new List<ByteEdit>(count);
+        for (var i = 0; i < count; i++)
+        {
+            AddByteEdit(offset + i, bytes[i], edits);
+        }
+
+        if (edits.Count == 0)
+        {
+            SelectRange(offset, count);
+            return false;
+        }
+
+        _undo.Push(new EditBatch(edits.ToArray()));
+        _redo.Clear();
+        _pendingNibble = -1;
+        SelectRange(offset, count);
+        return true;
+    }
+
     public void SetFirstLine(int line)
     {
         var maxFirstLine = Math.Max(0, TotalLines - VisibleLines);

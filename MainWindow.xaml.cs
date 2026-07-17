@@ -80,6 +80,7 @@ public partial class MainWindow : Window
     private bool _isApplyingDetectedChip;
     private bool _isSearching;
     private bool _updatingHexScrollBar;
+    private ReplaceDialog? _replaceDialog;
 
     public MainWindow()
     {
@@ -512,6 +513,8 @@ public partial class MainWindow : Window
 
     private async void WindowsKeySearch_Click(object sender, RoutedEventArgs e) => await RunWindowsKeySearchAsync();
 
+    private async void HexReplace_Click(object sender, RoutedEventArgs e) => await RunReplaceDialogAsync();
+
     private void HexSearchClear_Click(object sender, RoutedEventArgs e)
     {
         HexSearchBox.Clear();
@@ -584,24 +587,14 @@ public partial class MainWindow : Window
         var query = HexSearchBox.Text?.Trim() ?? string.Empty;
         var mode = CurrentHexSearchMode();
         _isSearching = true;
-        HexSearchBox.IsEnabled = false;
-        HexSearchModeCombo.IsEnabled = false;
-        HexSearchPreviousButton.IsEnabled = false;
-        HexSearchAllButton.IsEnabled = false;
-        HexSearchNextButton.IsEnabled = false;
-        WindowsKeySearchButton.IsEnabled = false;
+        SetSearchControlsEnabled(false);
         try
         {
             await SearchHexViewAsync(mode, query, forward);
         }
         finally
         {
-            HexSearchBox.IsEnabled = true;
-            HexSearchModeCombo.IsEnabled = true;
-            HexSearchPreviousButton.IsEnabled = true;
-            HexSearchAllButton.IsEnabled = true;
-            HexSearchNextButton.IsEnabled = true;
-            WindowsKeySearchButton.IsEnabled = true;
+            SetSearchControlsEnabled(true);
             _isSearching = false;
         }
     }
@@ -617,24 +610,14 @@ public partial class MainWindow : Window
         var query = HexSearchBox.Text?.Trim() ?? string.Empty;
         var mode = CurrentHexSearchMode();
         _isSearching = true;
-        HexSearchBox.IsEnabled = false;
-        HexSearchModeCombo.IsEnabled = false;
-        HexSearchPreviousButton.IsEnabled = false;
-        HexSearchAllButton.IsEnabled = false;
-        HexSearchNextButton.IsEnabled = false;
-        WindowsKeySearchButton.IsEnabled = false;
+        SetSearchControlsEnabled(false);
         try
         {
             await SearchAllHexViewAsync(mode, query);
         }
         finally
         {
-            HexSearchBox.IsEnabled = true;
-            HexSearchModeCombo.IsEnabled = true;
-            HexSearchPreviousButton.IsEnabled = true;
-            HexSearchAllButton.IsEnabled = true;
-            HexSearchNextButton.IsEnabled = true;
-            WindowsKeySearchButton.IsEnabled = true;
+            SetSearchControlsEnabled(true);
             _isSearching = false;
         }
     }
@@ -648,26 +631,79 @@ public partial class MainWindow : Window
         }
 
         _isSearching = true;
-        HexSearchBox.IsEnabled = false;
-        HexSearchModeCombo.IsEnabled = false;
-        HexSearchPreviousButton.IsEnabled = false;
-        HexSearchAllButton.IsEnabled = false;
-        HexSearchNextButton.IsEnabled = false;
-        WindowsKeySearchButton.IsEnabled = false;
+        SetSearchControlsEnabled(false);
         try
         {
             await SearchWindowsKeyMarkerAsync();
         }
         finally
         {
-            HexSearchBox.IsEnabled = true;
-            HexSearchModeCombo.IsEnabled = true;
-            HexSearchPreviousButton.IsEnabled = true;
-            HexSearchAllButton.IsEnabled = true;
-            HexSearchNextButton.IsEnabled = true;
-            WindowsKeySearchButton.IsEnabled = true;
+            SetSearchControlsEnabled(true);
             _isSearching = false;
         }
+    }
+
+    private Task RunReplaceDialogAsync()
+    {
+        if (_isSearching)
+        {
+            AppendLog("Search is already running");
+            return Task.CompletedTask;
+        }
+
+        var mode = CurrentHexSearchMode();
+        if (string.Equals(mode, "Offset", StringComparison.OrdinalIgnoreCase))
+        {
+            AppendLog("Replace supports Hex and Text modes only");
+            return Task.CompletedTask;
+        }
+
+        if (_replaceDialog is not null)
+        {
+            _replaceDialog.Activate();
+            return Task.CompletedTask;
+        }
+
+        var dialog = new ReplaceDialog(mode, RunReplaceFromDialogAsync)
+        {
+            Owner = this
+        };
+        _replaceDialog = dialog;
+        dialog.Closed += (_, _) => _replaceDialog = null;
+        dialog.Show();
+        return Task.CompletedTask;
+    }
+
+    private async Task RunReplaceFromDialogAsync(string replacementText, bool replaceAll)
+    {
+        if (_isSearching)
+        {
+            AppendLog("Search is already running");
+            return;
+        }
+
+        _isSearching = true;
+        SetSearchControlsEnabled(false);
+        try
+        {
+            await ReplaceHexViewAsync(replaceAll, replacementText);
+        }
+        finally
+        {
+            SetSearchControlsEnabled(true);
+            _isSearching = false;
+        }
+    }
+
+    private void SetSearchControlsEnabled(bool enabled)
+    {
+        HexSearchBox.IsEnabled = enabled;
+        HexSearchModeCombo.IsEnabled = enabled;
+        HexSearchPreviousButton.IsEnabled = enabled;
+        HexSearchAllButton.IsEnabled = enabled;
+        HexSearchNextButton.IsEnabled = enabled;
+        HexReplaceButton.IsEnabled = enabled;
+        WindowsKeySearchButton.IsEnabled = enabled;
     }
 
     private string CurrentHexSearchMode() => HexSearchModeCombo.SelectedItem as string ?? "Offset";
@@ -771,6 +807,76 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             AppendLog($"Search all failed: {ex.Message}");
+        }
+    }
+
+    private async Task ReplaceHexViewAsync(bool replaceAll, string replacementText)
+    {
+        try
+        {
+            var mode = CurrentHexSearchMode();
+            var query = HexSearchBox.Text?.Trim() ?? string.Empty;
+            if (string.IsNullOrEmpty(query))
+            {
+                return;
+            }
+
+            if (string.Equals(mode, "Offset", StringComparison.OrdinalIgnoreCase))
+            {
+                AppendLog("Replace supports Hex and Text modes only");
+                return;
+            }
+
+            if (!TryBuildSearchAndReplacement(mode, query, replacementText, out var pattern, out var replacement, out var label))
+            {
+                return;
+            }
+
+            if (replacement.Length > pattern.Length)
+            {
+                AppendLog("Replacement cannot be longer than the search pattern");
+                return;
+            }
+
+            var replaceBytes = PadReplacement(replacement, pattern.Length);
+            var offsets = replaceAll
+                ? await Task.Run(() => string.Equals(mode, "Text", StringComparison.OrdinalIgnoreCase)
+                    ? FindAllAsciiText(_buffer, pattern)
+                    : FindAllBytes(_buffer, pattern))
+                : await FindSingleReplaceOffsetAsync(mode, pattern);
+            if (replaceAll)
+            {
+                offsets = RemoveOverlappingMatches(offsets, pattern.Length);
+            }
+
+            if (offsets.Count == 0)
+            {
+                AppendLog($"{label} not found");
+                ShowSearchHits([], query, $"{label} not found");
+                return;
+            }
+
+            var changed = 0;
+            foreach (var offset in offsets)
+            {
+                if (HexEditor.ReplaceBytes(offset, replaceBytes))
+                {
+                    changed++;
+                }
+            }
+
+            ShowSearchHits(offsets, query, $"{label}: {offsets.Count} replace candidate(s)");
+            ShowSearchResult(offsets[0], pattern.Length, logFound: false);
+            _currentOffset = replaceAll
+                ? offsets[^1]
+                : Math.Min(_buffer.Length - 1, offsets[0] + pattern.Length - 1);
+            AppendLog(replaceAll
+                ? $"Replaced {changed} of {offsets.Count} match(es)"
+                : changed > 0 ? $"Replaced at 0x{offsets[0]:X6}" : $"Match at 0x{offsets[0]:X6} already has replacement value");
+        }
+        catch (Exception ex)
+        {
+            AppendLog($"Replace failed: {ex.Message}");
         }
     }
 
@@ -1157,6 +1263,100 @@ public partial class MainWindow : Window
         }
 
         return offset >= 0 ? SearchResult.Success(offset, pattern.Length) : SearchResult.Fail(notFoundMessage);
+    }
+
+    private async Task<List<int>> FindSingleReplaceOffsetAsync(string mode, byte[] pattern)
+    {
+        var selectedOffset = HexEditor.SelectedOffset;
+        if ((uint)selectedOffset < _buffer.Length && selectedOffset <= _buffer.Length - pattern.Length)
+        {
+            var matchesSelected = string.Equals(mode, "Text", StringComparison.OrdinalIgnoreCase)
+                ? AsciiEqualsIgnoreCase(_buffer, pattern, selectedOffset)
+                : _buffer.AsSpan(selectedOffset, pattern.Length).SequenceEqual(pattern);
+            if (matchesSelected)
+            {
+                return [selectedOffset];
+            }
+        }
+
+        var result = string.Equals(mode, "Text", StringComparison.OrdinalIgnoreCase)
+            ? await SearchTextAsync(Encoding.ASCII.GetString(pattern), forward: true, $"{mode} not found")
+            : await SearchPatternAsync(pattern, forward: true, "Hex pattern not found");
+        return result.Found ? [result.Offset] : [];
+    }
+
+    private bool TryBuildSearchAndReplacement(string mode, string query, string replacementText, out byte[] pattern, out byte[] replacement, out string label)
+    {
+        pattern = [];
+        replacement = [];
+        label = string.Empty;
+
+        if (string.Equals(mode, "Text", StringComparison.OrdinalIgnoreCase))
+        {
+            pattern = Encoding.ASCII.GetBytes(query);
+            replacement = Encoding.ASCII.GetBytes(replacementText);
+            label = $"Text \"{query}\"";
+        }
+        else
+        {
+            if (!TryParseHexPattern(query, out pattern))
+            {
+                AppendLog($"Invalid hex pattern: {query}");
+                return false;
+            }
+
+            if (!TryParseHexPattern(replacementText, out replacement))
+            {
+                AppendLog($"Invalid replacement hex: {replacementText}");
+                return false;
+            }
+
+            label = $"Hex {FormatHexPattern(pattern)}";
+        }
+
+        if (pattern.Length == 0)
+        {
+            AppendLog($"Nothing to replace: {query}");
+            return false;
+        }
+
+        if (replacement.Length == 0)
+        {
+            AppendLog("Replacement is empty");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static byte[] PadReplacement(byte[] replacement, int length)
+    {
+        if (replacement.Length == length)
+        {
+            return replacement;
+        }
+
+        var padded = new byte[length];
+        Buffer.BlockCopy(replacement, 0, padded, 0, replacement.Length);
+        return padded;
+    }
+
+    private static List<int> RemoveOverlappingMatches(IEnumerable<int> offsets, int length)
+    {
+        var filtered = new List<int>();
+        var nextAllowed = 0;
+        foreach (var offset in offsets)
+        {
+            if (offset < nextAllowed)
+            {
+                continue;
+            }
+
+            filtered.Add(offset);
+            nextAllowed = offset + length;
+        }
+
+        return filtered;
     }
 
     private void ShowSearchResult(int offset, int length = 1, bool logFound = true)

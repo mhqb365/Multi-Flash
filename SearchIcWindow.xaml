@@ -125,6 +125,7 @@
             </DataGrid.Resources>
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Device" Binding="{Binding Device}" Width="160"/>
+                <DataGridTextColumn Header="ID" Binding="{Binding JedecId}" Width="76"/>
                 <DataGridTextColumn Header="Volts" Binding="{Binding Volts}" Width="58"/>
                 <DataGridTextColumn Header="Size" Binding="{Binding Size}" Width="88"/>
                 <DataGridTextColumn Header="Page" Binding="{Binding Page}" Width="94"/>

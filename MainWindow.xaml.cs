@@ -400,7 +400,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        await DetectIcAsync(logLifecycle: true, autoApplySingle: false, openCatalogOnMiss: true);
+        await DetectIcAsync(logLifecycle: true, autoApplySingle: true, openCatalogOnMiss: true);
     }
 
     private Task DetectIcAsync(bool logLifecycle, bool autoApplySingle, bool openCatalogOnMiss) =>
@@ -1740,7 +1740,10 @@ public partial class MainWindow : Window
             return;
         }
 
-        AppendLog($"Found {candidates.Count} IC candidate(s) for ID {idText}");
+        AppendLog(candidates.Count == 1
+            ? $"Detected JEDEC ID: {idText}. One compatible IC profile found"
+            : $"Detected JEDEC ID: {idText}. Multiple compatible IC profiles found. Please select the exact chip marking");
+
         if (autoApplySingle && candidates.Count == 1)
         {
             var candidate = candidates[0];

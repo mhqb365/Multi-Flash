@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Media;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -1278,12 +1279,15 @@ public partial class MainWindow : Window
                     ? $"{name} completed: {FormatBytes(byteCount.Value)} in {FormatDuration(stopwatch.Elapsed)} ({FormatSpeed(byteCount.Value, stopwatch.Elapsed)})"
                     : $"{name} completed in {FormatDuration(stopwatch.Elapsed)}");
             }
+
+            PlayOperationSound(name, success: true);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             OperationStatusText.Text = "Error";
             AppendLog($"ERROR after {FormatDuration(stopwatch.Elapsed)}: {ex.Message}");
+            PlayOperationSound(name, success: false);
             MessageBox.Show(this, ex.Message, name, MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
@@ -1291,6 +1295,30 @@ public partial class MainWindow : Window
             _isBusy = false;
         }
     }
+
+    private static void PlayOperationSound(string operationName, bool success)
+    {
+        if (!ShouldPlayCompletionSound(operationName))
+        {
+            return;
+        }
+
+        try
+        {
+            (success ? SystemSounds.Asterisk : SystemSounds.Hand).Play();
+        }
+        catch
+        {
+            // Best-effort only; sound failures must never affect programmer operations.
+        }
+    }
+
+    private static bool ShouldPlayCompletionSound(string operationName) =>
+        operationName.StartsWith("Read chip", StringComparison.OrdinalIgnoreCase) ||
+        operationName.StartsWith("Write chip", StringComparison.OrdinalIgnoreCase) ||
+        operationName.StartsWith("Erase chip", StringComparison.OrdinalIgnoreCase) ||
+        operationName.StartsWith("Verify", StringComparison.OrdinalIgnoreCase) ||
+        operationName.Contains("verify", StringComparison.OrdinalIgnoreCase);
 
     private ChipProfile CurrentChip() => ChipCombo.SelectedItem as ChipProfile ?? _chips[0];
 

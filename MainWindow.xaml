@@ -423,11 +423,19 @@
 
                         <DockPanel Grid.Row="0" Background="{DynamicResource SubtleBackgroundBrush}" LastChildFill="True" Margin="0,0,0,1">
                             <TextBlock DockPanel.Dock="Left" Text="Hex Editor" FontWeight="SemiBold" Margin="10,0,10,0" VerticalAlignment="Center"/>
+                            <Button x:Name="WindowsKeySearchButton"
+                                    DockPanel.Dock="Right"
+                                    Width="42"
+                                    Height="20"
+                                    Margin="2,4,8,4"
+                                    Padding="0"
+                                    ToolTip="Find Windows key marker"
+                                    Click="WindowsKeySearch_Click">Key</Button>
                             <Button x:Name="HexSearchNextButton"
                                     DockPanel.Dock="Right"
                                     Width="24"
                                     Height="20"
-                                    Margin="2,4,8,4"
+                                    Margin="2,4,2,4"
                                     Padding="0"
                                     ToolTip="Find next"
                                     Click="HexSearchNext_Click">›</Button>

@@ -21,6 +21,8 @@ public partial class MainWindow : Window
     private const int MaxHexPreviewRows = 4096;
     private const int BytesPerHexRow = 16;
     private const int SearchHitContextBytes = 16;
+    private const string MoonIconPath = "M12 3a6 6 0 0 0 9 9a9 9 0 1 1-9-9";
+    private const string SunIconPath = "M12 8a4 4 0 1 0 0 8a4 4 0 0 0 0-8 M12 2v2 M12 20v2 M4.93 4.93l1.41 1.41 M17.66 17.66l1.41 1.41 M2 12h2 M20 12h2 M4.93 19.07l1.41-1.41 M17.66 6.34l1.41-1.41";
     private static readonly byte[] WindowsKeyMarker =
     [
         0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1594,7 +1596,7 @@ public partial class MainWindow : Window
 
     private void ApplyTheme(bool darkMode)
     {
-        ThemeToggleButton.Content = darkMode ? "Light" : "Dark";
+        ThemeIconPath.Data = Geometry.Parse(darkMode ? SunIconPath : MoonIconPath);
         ThemeToggleButton.ToolTip = darkMode ? "Switch to light mode" : "Switch to dark mode";
 
         if (darkMode)
@@ -2080,7 +2082,7 @@ public partial class MainWindow : Window
 
     private static void AddIntegratedIcCatalog(List<IcCandidate> list)
     {
-        AddTsvIcCatalog(list, "IntegratedIcCatalog.tsv");
+        AddTsvIcCatalog(list, "IntegratedICCatalog.tsv");
     }
 
     private static void AddT48IcCatalog(List<IcCandidate> list)

@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Include="IntegratedIcCatalog.tsv" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="IntegratedICCatalog.tsv" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="T48ICCatalog.tsv" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

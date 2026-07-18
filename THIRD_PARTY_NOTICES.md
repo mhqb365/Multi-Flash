@@ -2,7 +2,7 @@
 
 ## flashrom chip definitions
 
-Flashrom-derived rows in `IntegratedIcCatalog.tsv` are generated from flashrom chip definition files:
+Flashrom-derived rows in `IntegratedICCatalog.tsv` are generated from flashrom chip definition files:
 
 - `flashchips/winbond.c`
 - `flashchips/macronix.c`
